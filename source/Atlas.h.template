@@ -1,0 +1,12 @@
+R"===(#include "Atlas.h"
+
+class [CLASS_NAME] : public Atlas
+{
+public:
+    [CLASS_NAME]() {};
+    virtual ~[CLASS_NAME]() {};
+
+    bool initialize() override;
+
+};
+)==="

@@ -1,0 +1,25 @@
+R"===(#include "[CLASS_NAME].h"
+
+bool [CLASS_NAME]::initialize()
+{
+    static const Piece s_pieceList[[NUM_PIECES]] =
+    {
+[PIECE_LISTS]
+    };
+
+    m_pieceList = s_pieceList;
+    m_numPieces = [NUM_PIECES];
+
+    // create pieces
+    for (int i = 0; i < m_numPieces; ++i)
+    {
+        m_pieceMap[s_pieceList[i].id] = &s_pieceList[i];
+    }
+    // create texture
+    m_texture = blink::Texture2D::fromFile("resource/[CLASS_NAME].[IMAGE_EXT]");
+    m_texture->setMinFilter(blink::Texture::SampleFilter::Nearest);
+    m_texture->setMagFilter(blink::Texture::SampleFilter::Nearest);
+
+    return true;
+}
+)==="
