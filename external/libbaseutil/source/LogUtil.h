@@ -1,13 +1,14 @@
 /*!
  * \file LogUtil.h
  * \date 10-11-2014 16:13:32
- * 
- * 
+ *
+ *
  * \author zjhlogo (zjhlogo@gmail.com)
  */
 #pragma once
 
 #include "BaseType.h"
+
 #include <format.h>
 
 NS_BEGIN
@@ -15,21 +16,20 @@ NS_BEGIN
 class LogUtil
 {
 public:
-	enum class LogPriority
-	{
-		Info = 0,
-		Debug,
-		Warning,
-		Error,
-		NumPriority,
-	};
+    enum class LogPriority
+    {
+        Info = 0,
+        Debug,
+        Warning,
+        Error,
+        NumPriority,
+    };
 
 public:
-	static void print(const char* location, int line, LogPriority prio, const tstring& strMsg);
+    static void print(const char* location, int line, LogPriority prio, const tstring& strMsg);
 
-	static bool openLogFile(const tstring& logFile);
-	static void closeLogFile();
-
+    static bool openLogFile(const tstring& logFile);
+    static void closeLogFile();
 };
 
 NS_END

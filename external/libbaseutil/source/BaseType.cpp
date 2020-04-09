@@ -4,7 +4,7 @@
  * \author zjhlogo zjhlogo@gmail.com
  * \date 04/14/2016
  *
- * 
+ *
  */
 #include "BaseType.h"
 
@@ -43,9 +43,6 @@ const glm::vec4 VEC4_RED = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
 const glm::vec4 VEC4_GREEN = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
 const glm::vec4 VEC4_BLUE = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
 
-const glm::mat4 MAT4_IDENTITY = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f,
-	0.0f, 1.0f, 0.0f, 0.0f,
-	0.0f, 0.0f, 1.0f, 0.0f,
-	0.0f, 0.0f, 0.0f, 1.0f);
+const glm::mat4 MAT4_IDENTITY = glm::mat4(1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f);
 
 NS_END

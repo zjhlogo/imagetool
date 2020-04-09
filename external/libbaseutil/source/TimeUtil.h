@@ -4,7 +4,7 @@
  * \author zjhlogo zjhlogo@gmail.com
  * \date 03/31/2016
  *
- * 
+ *
  */
 #pragma once
 
@@ -15,11 +15,10 @@ NS_BEGIN
 class TimeUtil
 {
 public:
-	static float now();
+    static float now();
 
 protected:
-	static bool initialize();
-
+    static bool initialize();
 };
 
 NS_END

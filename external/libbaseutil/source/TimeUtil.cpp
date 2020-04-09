@@ -4,7 +4,7 @@
  * \author zjhlogo zjhlogo@gmail.com
  * \date 03/31/2016
  *
- * 
+ *
  */
 #include "TimeUtil.h"
 
