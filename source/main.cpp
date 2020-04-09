@@ -123,7 +123,8 @@ int main(int argc, char** argv)
                                   "resize",
                                   "resize image, example: --resize -i dir -e png --width 1024 --height 1024; or --resize -i dir -e png --percent 50");
     TCLAP::SwitchArg cropSwitch("", "crop", "crop image, example: --crop -i dir -e png --width 128 --height 128");
-    TCLAP::SwitchArg convertSwitch("", "convert", "convert image, example: --convert -i dir -e bmp -t png --depth 24");
+    TCLAP::SwitchArg convertSwitch("", "convert", "convert image, example: --convert -i dir -e bmp -t png");
+    TCLAP::SwitchArg convertBlenderSwitch("", "convert-blender", "convert image, example: --convert-blender -i dir -e dat -t png");
     TCLAP::SwitchArg optiPngSwitch("", "optipng", "optimize png file size, example: --optipng -i dir");
     TCLAP::SwitchArg replaceSwitch("",
                                    "replace",
@@ -156,6 +157,7 @@ int main(int argc, char** argv)
     xorList.push_back(&resizeSwitch);
     xorList.push_back(&cropSwitch);
     xorList.push_back(&convertSwitch);
+    xorList.push_back(&convertBlenderSwitch);
     xorList.push_back(&optiPngSwitch);
     xorList.push_back(&replaceSwitch);
     xorList.push_back(&binPackSwitch);
@@ -192,6 +194,10 @@ int main(int argc, char** argv)
     else if (convertSwitch.isSet() && typeArg.isSet())
     {
         tool.convert(inputFileArg.getValue(), extsArg.getValue(), typeArg.getValue(), depthArg.getValue(), deleteSrcSwitch.isSet());
+    }
+    else if (convertBlenderSwitch.isSet() && typeArg.isSet())
+    {
+        tool.convertBlenderIconFile(inputFileArg.getValue(), extsArg.getValue(), typeArg.getValue(), depthArg.getValue(), deleteSrcSwitch.isSet());
     }
     else if (optiPngSwitch.isSet())
     {

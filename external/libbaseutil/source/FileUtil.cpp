@@ -369,7 +369,7 @@ tstring FileUtil::getAbsolutePath(const tstring& basePath, const tstring& relati
 
 int FileUtil::enumlateFiles(StringSet& filesOut, const tstring& dir)
 {
-    std::regex rg("*");
+    std::regex rg(".*");
     return enumlateFiles(filesOut, dir, rg);
 }
 

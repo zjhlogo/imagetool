@@ -72,6 +72,14 @@ public:
 
     typedef std::vector<FileInfoGroup> FileInfoGroupList;
 
+    class BlenderIconHead
+    {
+    public:
+        unsigned int icon_w, icon_h;
+        unsigned int orig_x, orig_y;
+        unsigned int canvas_w, canvas_h;
+    };
+
 public:
     ImageTool();
     ~ImageTool();
@@ -80,6 +88,11 @@ public:
     bool resizeImageByPercent(const spank::StringList& files, const spank::StringList& exts, float scale);
     bool cropImage(const spank::StringList& files, const spank::StringList& exts, int width, int height);
     bool convert(const spank::StringList& files, const spank::StringList& exts, const spank::tstring& destType, int depth = -1, bool deleteSrc = false);
+    bool convertBlenderIconFile(const spank::StringList& files,
+                                const spank::StringList& exts,
+                                const spank::tstring& destType,
+                                int depth = -1,
+                                bool deleteSrc = false);
     bool optiPng(const spank::StringList& files);
     bool replaceChannel(const spank::tstring& strFile1,
                         FREE_IMAGE_COLOR_CHANNEL eChannel1,
@@ -121,10 +134,10 @@ public:
 private:
     void collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::StringList& exts);
     void collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::tstring& reg);
-
     const spank::tstring& getFilePath(TEXTURES eTexture);
     void printGroupInfo(const FileInfoGroupList& fileInfoGroupList, const spank::tstring& outputType, const spank::tstring& commandFormat);
 
+    bool convertToType(fipImage& image, const spank::tstring& destFilePath, FREE_IMAGE_FORMAT dstFif, int depth);
     void DCT(const fipImage& image, const int& n, double** iMatrix);
     void coefficient(const int& n, double** quotient, double** quotientT);
     void matrixMultiply(double** A, double** B, int n, double** result);

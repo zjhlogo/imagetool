@@ -203,8 +203,8 @@ bool ImageTool::convert(const spank::StringList& files,
                         int depth /* = -1 */,
                         bool deleteSrc /* = false */)
 {
-    FREE_IMAGE_FORMAT fifType = fipImage::identifyFIF(destType.c_str());
-    if (fifType == FIF_UNKNOWN) return false;
+    FREE_IMAGE_FORMAT dstFif = fipImage::identifyFIF(destType.c_str());
+    if (dstFif == FIF_UNKNOWN) return false;
 
     spank::StringSet fileSet;
     collectFiles(fileSet, files, exts);
@@ -219,79 +219,11 @@ bool ImageTool::convert(const spank::StringList& files,
             continue;
         }
 
-        if (depth != -1 && depth != image.getBitsPerPixel())
-        {
-            switch (depth)
-            {
-            case 8:
-            {
-                if (!image.convertTo8Bits())
-                {
-                    std::cout << "Error, convert image to 8 bits failed: " << file << std::endl;
-                    continue;
-                }
-            }
-            break;
-            case 16:
-            {
-                if (!image.convertTo16Bits565())
-                {
-                    std::cout << "Error, convert image to 16 bits failed: " << file << std::endl;
-                    continue;
-                }
-            }
-            break;
-            case 24:
-            {
-                if (!image.convertTo24Bits())
-                {
-                    std::cout << "Error, convert image to 24 bits failed: " << file << std::endl;
-                    continue;
-                }
-            }
-            break;
-            case 32:
-            {
-                if (!image.convertTo24Bits())
-                {
-                    std::cout << "Error, convert image to 24 bits failed: " << file << std::endl;
-                    continue;
-                }
-            }
-            break;
-            default:
-            {
-                std::cout << "Error, unsupported depth: " << depth << std::endl;
-                continue;
-            }
-            break;
-            }
-        }
+        spank::tstring destFilePath = spank::FileUtil::getFileDirectory(file) + "/" + spank::FileUtil::getFileNameWithoutExtension(file) + "." + destType;
 
-        fipMemoryIO memIO;
-        if (!image.saveToMemory(fifType, memIO))
+        if (!convertToType(image, destFilePath, dstFif, depth))
         {
-            std::cout << "Error, save to memory failed: " << file << std::endl;
-            continue;
-        }
-
-        if (!memIO.seek(0L, SEEK_SET))
-        {
-            std::cout << "Error, seek memory failed: " << file << std::endl;
-            continue;
-        }
-
-        if (!image.loadFromMemory(memIO))
-        {
-            std::cout << "Error, load from memory failed: " << file << std::endl;
-            continue;
-        }
-
-        spank::tstring newFileName = spank::FileUtil::getFileDirectory(file) + "/" + spank::FileUtil::getFileNameWithoutExtension(file) + "." + destType;
-        if (!image.save(newFileName.c_str()))
-        {
-            std::cout << "Error, save image failed: " << newFileName << std::endl;
-            continue;
+            std::cout << "Error file: " << file << std::endl;
         }
 
         if (deleteSrc)
@@ -299,7 +231,54 @@ bool ImageTool::convert(const spank::StringList& files,
             spank::FileUtil::removeFile(file);
         }
 
-        std::cout << "convert image (" << spank::FileUtil::getFileExtension(file) << "->" << destType << ") success " << newFileName << std::endl;
+        std::cout << "convert image (" << spank::FileUtil::getFileExtension(file) << "->" << destType << ") success " << destFilePath << std::endl;
+    }
+
+    return true;
+}
+
+bool ImageTool::convertBlenderIconFile(const spank::StringList& files,
+                                       const spank::StringList& exts,
+                                       const spank::tstring& destType,
+                                       int depth /*= -1*/,
+                                       bool deleteSrc /*= false*/)
+{
+    FREE_IMAGE_FORMAT dstFif = fipImage::identifyFIF(destType.c_str());
+    if (dstFif == FIF_UNKNOWN) return false;
+
+    spank::StringSet fileSet;
+    collectFiles(fileSet, files, exts);
+    if (fileSet.empty()) return true;
+
+    for (const auto& filePath : fileSet)
+    {
+        spank::File file;
+        if (!file.open(filePath))
+        {
+            std::cout << "Error, load image failed: " << filePath << std::endl;
+            continue;
+        }
+
+        BlenderIconHead iconHead;
+        file.read(&iconHead, sizeof(iconHead));
+
+        fipImage image(FIT_BITMAP, iconHead.icon_w, iconHead.icon_h, 32);
+        void* pixels = image.accessPixels();
+        file.read(pixels, sizeof(int) * iconHead.icon_w * iconHead.icon_h);
+
+        spank::tstring destFilePath = spank::FileUtil::getFileDirectory(filePath) + "/" + spank::FileUtil::getFileNameWithoutExtension(filePath) + "."
+                                      + destType;
+        if (!convertToType(image, destFilePath, dstFif, depth))
+        {
+            std::cout << "Error file: " << filePath << std::endl;
+        }
+
+        if (deleteSrc)
+        {
+            spank::FileUtil::removeFile(filePath);
+        }
+
+        std::cout << "convert image (" << spank::FileUtil::getFileExtension(filePath) << "->" << destType << ") success " << destFilePath << std::endl;
     }
 
     return true;
@@ -498,9 +477,7 @@ bool ImageTool::advBinPack(const spank::tstring& strFile, const spank::tstring& 
         {
             SubImageInfo& subImageInfo = it.second;
 
-            //			if
-            //(atlasInfo.pieceFileInfoMap.find(subImageInfo.textures[i]) !=
-            // atlasInfo.pieceFileInfoMap.end()) continue;
+            //			if (atlasInfo.pieceFileInfoMap.find(subImageInfo.textures[i]) != atlasInfo.pieceFileInfoMap.end()) continue;
 
             spank::tstring strFilePath = strDir + "/" + subImageInfo.textures[i] + ".png";
 
@@ -737,9 +714,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
 
     if (width != image2.getWidth() || height != image2.getHeight())
     {
-        std::cout << "Error, image size mismatch, both image width and height must "
-                     "be the same"
-                  << std::endl;
+        std::cout << "Error, image size mismatch, both image width and height must be the same" << std::endl;
         return false;
     }
 
@@ -808,9 +783,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
         break;
         default:
         {
-            std::cout << "Error, image bits per pixel mismatch, both image bits per "
-                         "pixel must be the same "
-                      << std::endl;
+            std::cout << "Error, image bits per pixel mismatch, both image bits per pixel must be the same " << std::endl;
             return false;
         }
         break;
@@ -859,9 +832,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
         break;
         default:
         {
-            std::cout << "Error, image bits per pixel mismatch, both image bits per "
-                         "pixel must be the same "
-                      << std::endl;
+            std::cout << "Error, image bits per pixel mismatch, both image bits per pixel must be the same " << std::endl;
             return false;
         }
         break;
@@ -1209,6 +1180,85 @@ void ImageTool::printGroupInfo(const FileInfoGroupList& fileInfoGroupList, const
     }
 }
 
+bool ImageTool::convertToType(fipImage& image, const spank::tstring& destFilePath, FREE_IMAGE_FORMAT dstFif, int depth)
+{
+    if (depth != -1 && depth != image.getBitsPerPixel())
+    {
+        switch (depth)
+        {
+        case 8:
+        {
+            if (!image.convertTo8Bits())
+            {
+                std::cout << "Error, convert image to 8 bits failed: " << std::endl;
+                return false;
+            }
+        }
+        break;
+        case 16:
+        {
+            if (!image.convertTo16Bits565())
+            {
+                std::cout << "Error, convert image to 16 bits failed: " << std::endl;
+                return false;
+            }
+        }
+        break;
+        case 24:
+        {
+            if (!image.convertTo24Bits())
+            {
+                std::cout << "Error, convert image to 24 bits failed: " << std::endl;
+                return false;
+            }
+        }
+        break;
+        case 32:
+        {
+            if (!image.convertTo24Bits())
+            {
+                std::cout << "Error, convert image to 32 bits failed: " << std::endl;
+                return false;
+            }
+        }
+        break;
+        default:
+        {
+            std::cout << "Error, unsupported depth: " << depth << std::endl;
+            return false;
+        }
+        break;
+        }
+    }
+
+    fipMemoryIO memIO;
+    if (!image.saveToMemory(dstFif, memIO))
+    {
+        std::cout << "Error, save to memory failed: " << std::endl;
+        return false;
+    }
+
+    if (!memIO.seek(0L, SEEK_SET))
+    {
+        std::cout << "Error, seek memory failed: " << std::endl;
+        return false;
+    }
+
+    if (!image.loadFromMemory(memIO))
+    {
+        std::cout << "Error, load from memory failed: " << std::endl;
+        return false;
+    }
+
+    if (!image.save(destFilePath.c_str()))
+    {
+        std::cout << "Error, save image failed: " << destFilePath << std::endl;
+        return false;
+    }
+
+    return true;
+}
+
 void ImageTool::DCT(const fipImage& image, const int& n, double** iMatrix)
 {
     for (int i = 0; i < n; ++i)
@@ -1497,9 +1547,8 @@ void ImageTool::saveAtlasInfoCpp(const spank::tstring& strOutDir,
         glm::vec2 lb(fileInfo.x / width, (height - fileInfo.y - fileInfo.height) / height);
         glm::vec2 rt((fileInfo.x + fileInfo.width) / width, (height - fileInfo.y) / height);
 
-        auto strPieceListItem = fmt::format("        {{ \"{}\", {{ {}, {} }}, {{ {}, {} }}, {{ {}, {} }}, {{ {{ "
-                                            "{:.03f}f, {:.03f}f }}, {{ {:.03f}f, {:.03f}f }}, {{ {:.03f}f, "
-                                            "{:.03f}f }}, {{ {:.03f}f, {:.03f}f }} }} }},\n",
+        auto strPieceListItem = fmt::format("        {{ \"{}\", {{ {}, {} }}, {{ {}, {} }}, {{ {}, {} }}, {{ {{ {:.03f}f, {:.03f}f }}, {{ {:.03f}f, {:.03f}f "
+                                            "}}, {{ {:.03f}f, {:.03f}f }}, {{ {:.03f}f, {:.03f}f }} }} }},\n",
                                             fileInfo.strId,
                                             fileInfo.srcWidth,
                                             fileInfo.srcHeight,
