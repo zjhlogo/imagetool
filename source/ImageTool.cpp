@@ -49,10 +49,9 @@ bool ImageTool::resizeImageByPixel(const spank::StringList& files, const spank::
 
         int oldWidth = image.getWidth();
         int oldHeight = image.getHeight();
-        if (oldWidth <= pixelWidth && oldHeight <= pixelHeight)
+        if (oldWidth == pixelWidth && oldHeight == pixelHeight)
         {
-            std::cout << "Skip scale image, already under size (" << pixelWidth << ", " << pixelHeight << ") image size = (" << oldWidth << ", " << oldHeight
-                      << ") " << file << std::endl;
+            std::cout << "Skip scale image, already under size (" << pixelWidth << ", " << pixelHeight << ") " << file << std::endl;
             continue;
         }
 
@@ -116,6 +115,50 @@ bool ImageTool::resizeImageByPercent(const spank::StringList& files, const spank
         }
 
         std::cout << "image scale success (" << oldWidth << ", " << oldHeight << ")->(" << newWidth << ", " << newHeight << ") " << file << std::endl;
+    }
+
+    return true;
+}
+
+bool ImageTool::stretchImageByPixel(const spank::StringList& files, const spank::StringList& exts, int pixelWidth, int pixelHeight)
+{
+    if (pixelWidth <= 0 || pixelHeight <= 0) return false;
+
+    spank::StringSet fileSet;
+    collectFiles(fileSet, files, exts);
+    if (fileSet.empty()) return true;
+
+    for (const auto& file : fileSet)
+    {
+        fipImage image;
+        if (!image.load(file.c_str()))
+        {
+            std::cout << "Error, load image failed: " << file << std::endl;
+            continue;
+        }
+
+        int oldWidth = image.getWidth();
+        int oldHeight = image.getHeight();
+        if (oldWidth == pixelWidth && oldHeight == pixelHeight)
+        {
+            std::cout << "Skip scale image, already under size (" << pixelWidth << ", " << pixelHeight << ") " << file << std::endl;
+            continue;
+        }
+
+        if (!image.rescale(pixelWidth, pixelHeight, FILTER_BILINEAR))
+        {
+            std::cout << "Error, scale image failed: (" << oldWidth << ", " << oldHeight << ")->(" << pixelWidth << ", " << pixelHeight << ") " << file
+                      << std::endl;
+            continue;
+        }
+
+        if (!image.save(file.c_str()))
+        {
+            std::cout << "Error, save image failed: " << file << std::endl;
+            continue;
+        }
+
+        std::cout << "image scale success (" << oldWidth << ", " << oldHeight << ")->(" << pixelWidth << ", " << pixelHeight << ") " << file << std::endl;
     }
 
     return true;

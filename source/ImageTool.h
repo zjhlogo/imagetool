@@ -86,6 +86,7 @@ public:
 
     bool resizeImageByPixel(const spank::StringList& files, const spank::StringList& exts, int pixelWidth, int pixelHeight);
     bool resizeImageByPercent(const spank::StringList& files, const spank::StringList& exts, float scale);
+    bool stretchImageByPixel(const spank::StringList& files, const spank::StringList& exts, int pixelWidth, int pixelHeight);
     bool cropImage(const spank::StringList& files, const spank::StringList& exts, int width, int height);
     bool convert(const spank::StringList& files, const spank::StringList& exts, const spank::tstring& destType, int depth = -1, bool deleteSrc = false);
     bool convertBlenderIconFile(const spank::StringList& files,

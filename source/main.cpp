@@ -119,42 +119,27 @@ int main(int argc, char** argv)
     cmd.add(regexArg);
 
     // add convention type
-    TCLAP::SwitchArg resizeSwitch("",
-                                  "resize",
-                                  "resize image, example: --resize -i dir -e png --width 1024 --height 1024; or --resize -i dir -e png --percent 50");
+    // clang-format off
+    TCLAP::SwitchArg resizeSwitch("", "resize", "resize image, example: --resize -i dir -e png --width 1024 --height 1024; or --resize -i dir -e png --percent 50");
+    TCLAP::SwitchArg stretchSwitch("", "stretch", "stretch image, example: --stretch -i dir -e png --width 1024 --height 512");
     TCLAP::SwitchArg cropSwitch("", "crop", "crop image, example: --crop -i dir -e png --width 128 --height 128");
     TCLAP::SwitchArg convertSwitch("", "convert", "convert image, example: --convert -i dir -e bmp -t png");
     TCLAP::SwitchArg convertBlenderSwitch("", "convert-blender", "convert image, example: --convert-blender -i dir -e dat -t png");
     TCLAP::SwitchArg optiPngSwitch("", "optipng", "optimize png file size, example: --optipng -i dir");
-    TCLAP::SwitchArg replaceSwitch("",
-                                   "replace",
-                                   "replace a file channel, the parameter -c can be [r|g|b|a] example: --replace --input src.png --input2 channel.png "
-                                   "--channel a --channel2 a -o out.png");
-    TCLAP::SwitchArg binPackSwitch("",
-                                   "binpack",
-                                   "binary packing images into a big image, example: --binpack -i dir -e png -t png -o out.atlas --rotate --trim");
+    TCLAP::SwitchArg replaceSwitch("", "replace", "replace a file channel, the parameter -c can be [r|g|b|a] example: --replace --input src.png --input2 channel.png --channel a --channel2 a -o out.png");
+    TCLAP::SwitchArg binPackSwitch("", "binpack", "binary packing images into a big image, example: --binpack -i dir -e png -t png -o out.atlas --rotate --trim");
     TCLAP::SwitchArg advBinPackSwitch("", "advbinpack", "advance binary packing images, example: --advbinpack -i images.xml -o out.xml");
     TCLAP::SwitchArg detectRedSwitch("", "detectred", "detect red pixel position in images, example: --detectred -i dir -e png -o out.xml");
-    TCLAP::SwitchArg splitSwitch("",
-                                 "split",
-                                 "split texture to sub textures, example: --split -i dir -e png -t png --row 10 --col 10 -o dir or --split -i dir -e png -t "
-                                 "png --width 800 --height 600 -o dir");
-    TCLAP::SwitchArg subtractSwitch("",
-                                    "subtract",
-                                    "subtract one image color from another image by pixel and generate difference image, example(image1-image2=out): "
-                                    "--subtract -i image1.png --input2 image2.png -o out.png");
-    TCLAP::SwitchArg groupByNameSwitch("",
-                                       "groupbyname",
-                                       "group images by filename, example: --groupbyname -i dir -e png -f \"img2webp -mixed -d 1000 -q 90 -m 6 -mt -v -o "
-                                       "{FILE_DIR}{FILE_COMMON_NAME}.webp -f {FILE_NAME_LIST}\" -d 1");
-    TCLAP::SwitchArg groupByFingerprintSwitch("",
-                                              "groupbyfp",
-                                              "group images by finerprint, example: --groupbyfp -i dir -e png -f \"img2webp -mixed -d 1000 -q 90 -m 6 -mt -v "
-                                              "-o {FILE_DIR}{FILE_COMMON_NAME}.webp -f {FILE_NAME_LIST}\" -d 1");
+    TCLAP::SwitchArg splitSwitch("", "split", "split texture to sub textures, example: --split -i dir -e png -t png --row 10 --col 10 -o dir or --split -i dir -e png -t png --width 800 --height 600 -o dir");
+    TCLAP::SwitchArg subtractSwitch("", "subtract", "subtract one image color from another image by pixel and generate difference image, example(image1-image2=out): --subtract -i image1.png --input2 image2.png -o out.png");
+    TCLAP::SwitchArg groupByNameSwitch("", "groupbyname", "group images by filename, example: --groupbyname -i dir -e png -f \"img2webp -mixed -d 1000 -q 90 -m 6 -mt -v -o {FILE_DIR}{FILE_COMMON_NAME}.webp -f {FILE_NAME_LIST}\" -d 1");
+    TCLAP::SwitchArg groupByFingerprintSwitch("", "groupbyfp", "group images by finerprint, example: --groupbyfp -i dir -e png -f \"img2webp -mixed -d 1000 -q 90 -m 6 -mt -v -o {FILE_DIR}{FILE_COMMON_NAME}.webp -f {FILE_NAME_LIST}\" -d 1");
     TCLAP::SwitchArg removeAlphaSwitch("", "removealpha", "remove alpha channel, example: --removealpha -i dir -e png --threshold 32");
+    // clang-format on
 
     std::vector<TCLAP::Arg*> xorList;
     xorList.push_back(&resizeSwitch);
+    xorList.push_back(&stretchSwitch);
     xorList.push_back(&cropSwitch);
     xorList.push_back(&convertSwitch);
     xorList.push_back(&convertBlenderSwitch);
@@ -185,6 +170,13 @@ int main(int argc, char** argv)
         else if (percentArg.isSet())
         {
             tool.resizeImageByPercent(inputFileArg.getValue(), extsArg.getValue(), percentArg.getValue() / 100.0f);
+        }
+    }
+    else if (stretchSwitch.isSet())
+    {
+        if (widthArg.isSet() && heightArg.isSet())
+        {
+            tool.stretchImageByPixel(inputFileArg.getValue(), extsArg.getValue(), widthArg.getValue(), heightArg.getValue());
         }
     }
     else if (cropSwitch.isSet() && widthArg.isSet() && heightArg.isSet())
