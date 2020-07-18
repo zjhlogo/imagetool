@@ -39,6 +39,7 @@ Rtti.cpp
 Rtti.h
 StringUtil.cpp
 StringUtil.h
+ThreadPool.h
 TimeUtil.cpp
 TimeUtil.h
 tinyxml2.cpp

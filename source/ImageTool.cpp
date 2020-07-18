@@ -8,11 +8,12 @@
  */
 #include "ImageTool.h"
 
+#include <ThreadPool.h>
 #include <tinyxml2.h>
 
 #include <algorithm>
-#include <iostream>
 #include <string>
+#include <thread>
 
 const char* ATLAS_CPP_TEMPLATE =
 #include "Atlas.cpp.template"
@@ -22,7 +23,8 @@ const char* ATLAS_H_TEMPLATE =
 #include "Atlas.h.template"
     ;
 
-ImageTool::ImageTool()
+ImageTool::ImageTool(int numThreads)
+    : m_numThreads(numThreads)
 {
 }
 
@@ -30,214 +32,251 @@ ImageTool::~ImageTool()
 {
 }
 
+static void resizeImageByPixelTask(const spank::tstring& file, int pixelWidth, int pixelHeight)
+{
+    fipImage image;
+    if (!image.load(file.c_str()))
+    {
+        LOGE("load image failed: {}", file);
+        return;
+    }
+
+    int oldWidth = image.getWidth();
+    int oldHeight = image.getHeight();
+    if (oldWidth == pixelWidth && oldHeight == pixelHeight)
+    {
+        LOGE("Skip scale image, already under size ({}, {}) {}", pixelWidth, pixelHeight, file);
+        return;
+    }
+
+    float scaleWidth = static_cast<float>(pixelWidth) / static_cast<float>(oldWidth);
+    float scaleHeight = static_cast<float>(pixelHeight) / static_cast<float>(oldHeight);
+    float scale = scaleWidth < scaleHeight ? scaleWidth : scaleHeight;
+
+    int newWidth = static_cast<int>(oldWidth * scale + 0.5f);
+    int newHeight = static_cast<int>(oldHeight * scale + 0.5f);
+    if (!image.rescale(newWidth, newHeight, FILTER_BILINEAR))
+    {
+        LOGE("Resize {} image failed: ({}, {})->({}, {}) {}", scale, oldWidth, oldHeight, newWidth, newHeight, file);
+        return;
+    }
+
+    if (!image.save(file.c_str()))
+    {
+        LOGE("Save image failed: {}", file);
+        return;
+    }
+
+    LOGI("Image scale success ({}, {})->({}, {}) {}", oldWidth, oldHeight, newWidth, newHeight, file);
+}
+
 bool ImageTool::resizeImageByPixel(const spank::StringList& files, const spank::StringList& exts, int pixelWidth, int pixelHeight)
 {
     if (pixelWidth <= 0 || pixelHeight <= 0) return false;
 
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
-    for (const auto& file : fileSet)
+    ThreadPool threadPool(m_numThreads);
+    for (const auto& file : m_fileSet)
     {
-        fipImage image;
-        if (!image.load(file.c_str()))
-        {
-            std::cout << "Error, load image failed: " << file << std::endl;
-            continue;
-        }
-
-        int oldWidth = image.getWidth();
-        int oldHeight = image.getHeight();
-        if (oldWidth == pixelWidth && oldHeight == pixelHeight)
-        {
-            std::cout << "Skip scale image, already under size (" << pixelWidth << ", " << pixelHeight << ") " << file << std::endl;
-            continue;
-        }
-
-        float scaleWidth = static_cast<float>(pixelWidth) / static_cast<float>(oldWidth);
-        float scaleHeight = static_cast<float>(pixelHeight) / static_cast<float>(oldHeight);
-        float scale = scaleWidth < scaleHeight ? scaleWidth : scaleHeight;
-
-        int newWidth = static_cast<int>(oldWidth * scale + 0.5f);
-        int newHeight = static_cast<int>(oldHeight * scale + 0.5f);
-        if (!image.rescale(newWidth, newHeight, FILTER_BILINEAR))
-        {
-            std::cout << "Error, scale " << scale << " image failed: (" << oldWidth << ", " << oldHeight << ")->(" << newWidth << ", " << newHeight << ") "
-                      << file << std::endl;
-            continue;
-        }
-
-        if (!image.save(file.c_str()))
-        {
-            std::cout << "Error, save image failed: " << file << std::endl;
-            continue;
-        }
-
-        std::cout << "image scale success (" << oldWidth << ", " << oldHeight << ")->(" << newWidth << ", " << newHeight << ") " << file << std::endl;
+        threadPool.enqueue(resizeImageByPixelTask, file, pixelWidth, pixelHeight);
     }
 
     return true;
+}
+
+static void resizeImageByPercentTask(const spank::tstring& file, float scale)
+{
+    fipImage image;
+    if (!image.load(file.c_str()))
+    {
+        LOGE("Load image failed: {}", file);
+        return;
+    }
+
+    int oldWidth = image.getWidth();
+    int oldHeight = image.getHeight();
+    int newWidth = static_cast<int>(oldWidth * scale + 0.5f);
+    int newHeight = static_cast<int>(oldHeight * scale + 0.5f);
+    if (!image.rescale(newWidth, newHeight, FILTER_BILINEAR))
+    {
+        LOGE("Scale {} image failed: ({}, {})->({}, {}) {}", scale, oldWidth, oldHeight, newWidth, newHeight, file);
+        return;
+    }
+
+    if (!image.save(file.c_str()))
+    {
+        LOGE("Save image failed: {}", file);
+        return;
+    }
+
+    LOGI("Image scale success ({}, {})->({}, {}) {}", oldWidth, oldHeight, newWidth, newHeight, file);
 }
 
 bool ImageTool::resizeImageByPercent(const spank::StringList& files, const spank::StringList& exts, float scale)
 {
     if (scale == 1.0f) return true;
 
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
-    for (const auto& file : fileSet)
+    ThreadPool threadPool(m_numThreads);
+    for (const auto& file : m_fileSet)
     {
-        fipImage image;
-        if (!image.load(file.c_str()))
-        {
-            std::cout << "Error, load image failed: " << file << std::endl;
-            continue;
-        }
-
-        int oldWidth = image.getWidth();
-        int oldHeight = image.getHeight();
-        int newWidth = static_cast<int>(oldWidth * scale + 0.5f);
-        int newHeight = static_cast<int>(oldHeight * scale + 0.5f);
-        if (!image.rescale(newWidth, newHeight, FILTER_BILINEAR))
-        {
-            std::cout << "Error, scale " << scale << " image failed: (" << oldWidth << ", " << oldHeight << ")->(" << newWidth << ", " << newHeight << ") "
-                      << file << std::endl;
-            continue;
-        }
-
-        if (!image.save(file.c_str()))
-        {
-            std::cout << "Error, save image failed: " << file << std::endl;
-            continue;
-        }
-
-        std::cout << "image scale success (" << oldWidth << ", " << oldHeight << ")->(" << newWidth << ", " << newHeight << ") " << file << std::endl;
+        threadPool.enqueue(resizeImageByPercentTask, file, scale);
     }
 
     return true;
+}
+
+static void stretchImageByPixelTask(const spank::tstring& file, int pixelWidth, int pixelHeight)
+{
+    fipImage image;
+    if (!image.load(file.c_str()))
+    {
+        LOGE("Load image failed: {}", file);
+        return;
+    }
+
+    int oldWidth = image.getWidth();
+    int oldHeight = image.getHeight();
+    if (oldWidth == pixelWidth && oldHeight == pixelHeight)
+    {
+        LOGE("Skip scale image, already under size ({}, {}) {}", pixelWidth, pixelHeight, file);
+        return;
+    }
+
+    if (!image.rescale(pixelWidth, pixelHeight, FILTER_BILINEAR))
+    {
+        LOGE("Scale image failed: ({}, {})->({}, {}) {}", oldWidth, oldHeight, pixelWidth, pixelHeight, file);
+        return;
+    }
+
+    if (!image.save(file.c_str()))
+    {
+        LOGE("Save image failed: {}", file);
+        return;
+    }
+
+    LOGI("Image scale success ({}, {})->({}, {}) {}", oldWidth, oldHeight, pixelWidth, pixelHeight, file);
 }
 
 bool ImageTool::stretchImageByPixel(const spank::StringList& files, const spank::StringList& exts, int pixelWidth, int pixelHeight)
 {
     if (pixelWidth <= 0 || pixelHeight <= 0) return false;
 
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
-    for (const auto& file : fileSet)
+    ThreadPool threadPool(m_numThreads);
+    for (const auto& file : m_fileSet)
     {
-        fipImage image;
-        if (!image.load(file.c_str()))
-        {
-            std::cout << "Error, load image failed: " << file << std::endl;
-            continue;
-        }
-
-        int oldWidth = image.getWidth();
-        int oldHeight = image.getHeight();
-        if (oldWidth == pixelWidth && oldHeight == pixelHeight)
-        {
-            std::cout << "Skip scale image, already under size (" << pixelWidth << ", " << pixelHeight << ") " << file << std::endl;
-            continue;
-        }
-
-        if (!image.rescale(pixelWidth, pixelHeight, FILTER_BILINEAR))
-        {
-            std::cout << "Error, scale image failed: (" << oldWidth << ", " << oldHeight << ")->(" << pixelWidth << ", " << pixelHeight << ") " << file
-                      << std::endl;
-            continue;
-        }
-
-        if (!image.save(file.c_str()))
-        {
-            std::cout << "Error, save image failed: " << file << std::endl;
-            continue;
-        }
-
-        std::cout << "image scale success (" << oldWidth << ", " << oldHeight << ")->(" << pixelWidth << ", " << pixelHeight << ") " << file << std::endl;
+        threadPool.enqueue(stretchImageByPixelTask, file, pixelWidth, pixelHeight);
     }
 
     return true;
+}
+
+static void cropImageTask(const spank::tstring& file, int width, int height)
+{
+    static fipImage zeroImage(FIT_BITMAP, width, height, 8);
+
+    fipImage image;
+    if (!image.load(file.c_str()))
+    {
+        LOGE("Load image failed: {}", file);
+        return;
+    }
+
+    int oldWidth = image.getWidth();
+    int oldHeight = image.getHeight();
+
+    if (oldWidth == width && oldHeight == height)
+    {
+        LOGE("Skip crop image, already under size ({}, {}) {}", oldWidth, oldHeight, file);
+        return;
+    }
+
+    fipImage newImage(image.getImageType(), width, height, image.getBitsPerPixel());
+    newImage.setChannel(zeroImage, FICC_RED);
+    newImage.setChannel(zeroImage, FICC_GREEN);
+    newImage.setChannel(zeroImage, FICC_BLUE);
+    newImage.setChannel(zeroImage, FICC_ALPHA);
+
+    if (width > oldWidth && height > oldHeight)
+    {
+        // nothing to do
+    }
+    else if (width < oldWidth && height < oldHeight)
+    {
+        if (!image.crop(0, 0, width, height))
+        {
+            LOGE("Crop old image failed: ({}, {}) {}", width, height, file);
+            return;
+        }
+    }
+    else
+    {
+        int cropWidth = width < oldWidth ? width : oldWidth;
+        int cropHeight = height < oldHeight ? height : oldHeight;
+
+        if (!image.crop(0, 0, cropWidth, cropHeight))
+        {
+            LOGE("Crop old image failed: ({}, {}) {}", cropWidth, cropHeight, file);
+            return;
+        }
+    }
+
+    if (!newImage.pasteSubImage(image, 0, 0))
+    {
+        LOGE("Crop image failed: ({}, {})->({}, {})  {}", oldWidth, oldHeight, width, height, file);
+        return;
+    }
+
+    if (!newImage.save(file.c_str()))
+    {
+        LOGE("Save image failed: {}", file);
+        return;
+    }
+
+    LOGI("Image crop success ({}, {})->({}, {}) {}", oldWidth, oldHeight, width, height, file);
 }
 
 bool ImageTool::cropImage(const spank::StringList& files, const spank::StringList& exts, int width, int height)
 {
     if (width <= 0 || height <= 0) return false;
 
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
-    fipImage zeroImage(FIT_BITMAP, width, height, 8);
-
-    for (const auto& file : fileSet)
+    ThreadPool threadPool(m_numThreads);
+    for (const auto& file : m_fileSet)
     {
-        fipImage image;
-        if (!image.load(file.c_str()))
-        {
-            std::cout << "Error, load image failed: " << file << std::endl;
-            continue;
-        }
-
-        int oldWidth = image.getWidth();
-        int oldHeight = image.getHeight();
-
-        if (oldWidth == width && oldHeight == height)
-        {
-            std::cout << "Skip crop image, already under size (" << oldWidth << ", " << oldHeight << ") " << file << std::endl;
-            continue;
-        }
-
-        fipImage newImage(image.getImageType(), width, height, image.getBitsPerPixel());
-        newImage.setChannel(zeroImage, FICC_RED);
-        newImage.setChannel(zeroImage, FICC_GREEN);
-        newImage.setChannel(zeroImage, FICC_BLUE);
-        newImage.setChannel(zeroImage, FICC_ALPHA);
-
-        if (width > oldWidth && height > oldHeight)
-        {
-            // nothing to do
-        }
-        else if (width < oldWidth && height < oldHeight)
-        {
-            if (!image.crop(0, 0, width, height))
-            {
-                std::cout << "Error, crop old image failed: (" << width << ", " << height << ") " << file << std::endl;
-                continue;
-            }
-        }
-        else
-        {
-            int cropWidth = width < oldWidth ? width : oldWidth;
-            int cropHeight = height < oldHeight ? height : oldHeight;
-
-            if (!image.crop(0, 0, cropWidth, cropHeight))
-            {
-                std::cout << "Error, crop old image failed: (" << cropWidth << ", " << cropHeight << ") " << file << std::endl;
-                continue;
-            }
-        }
-
-        if (!newImage.pasteSubImage(image, 0, 0))
-        {
-            std::cout << "Error, crop image failed: (" << oldWidth << ", " << oldHeight << ")->(" << width << ", " << height << ") " << file << std::endl;
-            continue;
-        }
-
-        if (!newImage.save(file.c_str()))
-        {
-            std::cout << "Error, save image failed: " << file << std::endl;
-            continue;
-        }
-
-        std::cout << "image crop success (" << oldWidth << ", " << oldHeight << ")->(" << width << ", " << height << ") " << file << std::endl;
+        threadPool.enqueue(cropImageTask, file, width, height);
     }
 
     return true;
+}
+
+static void convertTask(const spank::tstring& file, FREE_IMAGE_FORMAT dstFif, const spank::tstring& destType, int depth, bool deleteSrc)
+{
+    fipImage image;
+    if (!image.load(file.c_str()))
+    {
+        LOGE("Load image failed: {}", file);
+        return;
+    }
+
+    spank::tstring destFilePath = spank::FileUtil::getFileDirectory(file) + "/" + spank::FileUtil::getFileNameWithoutExtension(file) + "." + destType;
+
+    if (!ImageTool::convertToType(image, destFilePath, dstFif, depth))
+    {
+        LOGE("Convert File Failed: {}", file);
+    }
+
+    if (deleteSrc)
+    {
+        spank::FileUtil::removeFile(file);
+    }
+
+    LOGI("Convert image ({}->{}) success {}", spank::FileUtil::getFileExtension(file), destType, destFilePath);
 }
 
 bool ImageTool::convert(const spank::StringList& files,
@@ -249,35 +288,53 @@ bool ImageTool::convert(const spank::StringList& files,
     FREE_IMAGE_FORMAT dstFif = fipImage::identifyFIF(destType.c_str());
     if (dstFif == FIF_UNKNOWN) return false;
 
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
-    for (const auto& file : fileSet)
+    ThreadPool threadPool(m_numThreads);
+    for (const auto& file : m_fileSet)
     {
-        fipImage image;
-        if (!image.load(file.c_str()))
-        {
-            std::cout << "Error, load image failed: " << file << std::endl;
-            continue;
-        }
-
-        spank::tstring destFilePath = spank::FileUtil::getFileDirectory(file) + "/" + spank::FileUtil::getFileNameWithoutExtension(file) + "." + destType;
-
-        if (!convertToType(image, destFilePath, dstFif, depth))
-        {
-            std::cout << "Error file: " << file << std::endl;
-        }
-
-        if (deleteSrc)
-        {
-            spank::FileUtil::removeFile(file);
-        }
-
-        std::cout << "convert image (" << spank::FileUtil::getFileExtension(file) << "->" << destType << ") success " << destFilePath << std::endl;
+        threadPool.enqueue(convertTask, file, dstFif, destType, depth, deleteSrc);
     }
 
     return true;
+}
+
+class BlenderIconHead
+{
+public:
+    unsigned int icon_w, icon_h;
+    unsigned int orig_x, orig_y;
+    unsigned int canvas_w, canvas_h;
+};
+
+static void convertBlenderIconFileTask(const spank::tstring& filePath, FREE_IMAGE_FORMAT dstFif, const spank::tstring& destType, int depth, bool deleteSrc)
+{
+    spank::File file;
+    if (!file.open(filePath))
+    {
+        LOGE("Load image failed: {}", filePath);
+        return;
+    }
+
+    BlenderIconHead iconHead;
+    file.read(&iconHead, sizeof(iconHead));
+
+    fipImage image(FIT_BITMAP, iconHead.icon_w, iconHead.icon_h, 32);
+    void* pixels = image.accessPixels();
+    file.read(pixels, sizeof(int) * iconHead.icon_w * iconHead.icon_h);
+
+    spank::tstring destFilePath = spank::FileUtil::getFileDirectory(filePath) + "/" + spank::FileUtil::getFileNameWithoutExtension(filePath) + "." + destType;
+    if (!ImageTool::convertToType(image, destFilePath, dstFif, depth))
+    {
+        LOGE("Convert File Failed: {}", filePath);
+    }
+
+    if (deleteSrc)
+    {
+        spank::FileUtil::removeFile(filePath);
+    }
+
+    LOGI("Convert image ({}->{}) success {}", spank::FileUtil::getFileExtension(filePath), destType, destFilePath);
 }
 
 bool ImageTool::convertBlenderIconFile(const spank::StringList& files,
@@ -289,70 +346,46 @@ bool ImageTool::convertBlenderIconFile(const spank::StringList& files,
     FREE_IMAGE_FORMAT dstFif = fipImage::identifyFIF(destType.c_str());
     if (dstFif == FIF_UNKNOWN) return false;
 
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
-    for (const auto& filePath : fileSet)
+    ThreadPool threadPool(m_numThreads);
+    for (const auto& filePath : m_fileSet)
     {
-        spank::File file;
-        if (!file.open(filePath))
-        {
-            std::cout << "Error, load image failed: " << filePath << std::endl;
-            continue;
-        }
-
-        BlenderIconHead iconHead;
-        file.read(&iconHead, sizeof(iconHead));
-
-        fipImage image(FIT_BITMAP, iconHead.icon_w, iconHead.icon_h, 32);
-        void* pixels = image.accessPixels();
-        file.read(pixels, sizeof(int) * iconHead.icon_w * iconHead.icon_h);
-
-        spank::tstring destFilePath = spank::FileUtil::getFileDirectory(filePath) + "/" + spank::FileUtil::getFileNameWithoutExtension(filePath) + "."
-                                      + destType;
-        if (!convertToType(image, destFilePath, dstFif, depth))
-        {
-            std::cout << "Error file: " << filePath << std::endl;
-        }
-
-        if (deleteSrc)
-        {
-            spank::FileUtil::removeFile(filePath);
-        }
-
-        std::cout << "convert image (" << spank::FileUtil::getFileExtension(filePath) << "->" << destType << ") success " << destFilePath << std::endl;
+        threadPool.enqueue(convertBlenderIconFileTask, filePath, dstFif, destType, depth, deleteSrc);
     }
 
     return true;
 }
 
+static void optiPngTask(const spank::tstring& file)
+{
+    fipImage image;
+    if (!image.load(file.c_str()))
+    {
+        LOGE("Load image failed: {}", file);
+        return;
+    }
+
+    if (!image.save(file.c_str()))
+    {
+        LOGE("Save image failed: {}", file);
+        return;
+    }
+
+    LOGI("Png image optimize success {}", file);
+}
+
 bool ImageTool::optiPng(const spank::StringList& files)
 {
-    spank::StringSet fileSet;
-
     spank::StringList exts;
     exts.push_back("png");
 
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
-    for (const auto& file : fileSet)
+    ThreadPool threadPool(m_numThreads);
+    for (const auto& file : m_fileSet)
     {
-        fipImage image;
-        if (!image.load(file.c_str()))
-        {
-            std::cout << "Error, load image failed: " << file << std::endl;
-            continue;
-        }
-
-        if (!image.save(file.c_str()))
-        {
-            std::cout << "Error, save image failed: " << file << std::endl;
-            continue;
-        }
-
-        std::cout << "png image optimize success " << file << std::endl;
+        threadPool.enqueue(optiPngTask, file);
     }
 
     return true;
@@ -367,14 +400,14 @@ bool ImageTool::replaceChannel(const spank::tstring& strFile1,
     fipImage image1;
     if (!image1.load(strFile1.c_str()))
     {
-        std::cout << "Error, load image failed: " << strFile1 << std::endl;
+        LOGE("Load image failed: {}", strFile1);
         return false;
     }
 
     fipImage image2;
     if (!image2.load(strFile2.c_str()))
     {
-        std::cout << "Error, load image failed: " << strFile2 << std::endl;
+        LOGE("Load image failed: {}", strFile2);
         return false;
     }
 
@@ -389,7 +422,7 @@ bool ImageTool::replaceChannel(const spank::tstring& strFile1,
 
         if (!retrySuccess)
         {
-            std::cout << "Error, can not get channel " << eChannel2 << " from image " << strFile2 << std::endl;
+            LOGE("Can not get channel {} from image {}", eChannel2, strFile2);
             return false;
         }
     }
@@ -404,14 +437,14 @@ bool ImageTool::replaceChannel(const spank::tstring& strFile1,
 
         if (!retrySuccess)
         {
-            std::cout << "Error, set image channel " << eChannel1 << " failed: " << strFile1 << std::endl;
+            LOGE("Set image channel {} failed: {}", eChannel1, strFile1);
             return false;
         }
     }
 
     if (!image1.save(strOutFile.c_str()))
     {
-        std::cout << "Error, save image failed: " << strOutFile << std::endl;
+        LOGE("Save image failed: {}", strOutFile);
         return false;
     }
 
@@ -424,14 +457,15 @@ bool ImageTool::binPack(const spank::StringList& files,
                         const spank::tstring& strOutFile,
                         int packingFlag)
 {
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
-    if (packingFlag & PackingUtil::PACKING_FLAG_VERBOSE) std::cout << "collecting image size, total number of images: " << fileSet.size() << std::endl;
+    if (packingFlag & PackingUtil::PACKING_FLAG_VERBOSE)
+    {
+        LOGE("Collecting image size, total number of images: {}", m_fileSet.size());
+    }
 
     PackingUtil::PieceFileInfoMap pieceFileInfoMap;
-    for (auto file : fileSet)
+    for (auto file : m_fileSet)
     {
         fipImage image;
         image.load(file.c_str());
@@ -460,8 +494,8 @@ bool ImageTool::binPack(const spank::StringList& files,
     int height = 0;
     if (packingFlag & PackingUtil::PACKING_FLAG_VERBOSE)
     {
-        std::cout << "start packing images..." << std::endl;
-        packUtil.setProgressCallback([](const std::string& msg) { std::cout << msg << std::endl; });
+        LOGI("Start packing images...");
+        packUtil.setProgressCallback([](const std::string& msg) { LOGI("{}", msg); });
     }
 
     spank::tstring outFileName = spank::FileUtil::getFileNameWithoutExtension(strOutFile);
@@ -470,7 +504,10 @@ bool ImageTool::binPack(const spank::StringList& files,
 
     packUtil.pack(width, height, pieceFileInfoMap, outImagePath, packingFlag);
 
-    if (packingFlag & PackingUtil::PACKING_FLAG_VERBOSE) std::cout << "final image size: " << width << "x" << height << std::endl;
+    if (packingFlag & PackingUtil::PACKING_FLAG_VERBOSE)
+    {
+        LOGE("Final image size: {}x{}", width, height);
+    }
 
     // save pieceFileInfoMap into config file
     if (outFileExt == "atlas")
@@ -527,7 +564,7 @@ bool ImageTool::advBinPack(const spank::tstring& strFile, const spank::tstring& 
             fipImage image;
             if (!image.load(strFilePath.c_str()))
             {
-                std::cout << "Error, opening image: " << strFilePath << std::endl;
+                LOGE("Opening image: {}", strFilePath);
                 continue;
             }
 
@@ -593,21 +630,19 @@ bool ImageTool::advBinPack(const spank::tstring& strFile, const spank::tstring& 
 
 bool ImageTool::detectRed(const spank::StringList& files, const spank::StringList& exts, const spank::tstring& strOutFile)
 {
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
     tinyxml2::XMLDocument doc;
 
     tinyxml2::XMLElement* pXmlRoot = doc.NewElement("piece_dock");
     doc.LinkEndChild(pXmlRoot);
 
-    for (const auto& file : fileSet)
+    for (const auto& file : m_fileSet)
     {
         fipImage image;
         if (!image.load(file.c_str()))
         {
-            std::cout << "Error, load image failed: " << file << std::endl;
+            LOGE("Load image failed: {}", file);
             continue;
         }
 
@@ -650,18 +685,16 @@ bool ImageTool::splitByCount(const spank::StringList& files,
                              const spank::tstring& outputType,
                              const spank::tstring& dirOut)
 {
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
     spank::tstring formatedDir = spank::FileUtil::formatFileDir(dirOut);
 
-    for (const auto& file : fileSet)
+    for (const auto& file : m_fileSet)
     {
         fipImage mainImage;
         if (!mainImage.load(file.c_str()))
         {
-            std::cout << "Error, opening image: " << file << std::endl;
+            LOGE("Opening image: {}", file);
             return false;
         }
 
@@ -682,7 +715,7 @@ bool ImageTool::splitByCount(const spank::StringList& files,
             }
         }
 
-        std::cout << file << ", done" << std::endl;
+        LOGI("{}, done", file);
     }
 
     return true;
@@ -695,18 +728,16 @@ bool ImageTool::splitBySize(const spank::StringList& files,
                             const spank::tstring& outputType,
                             const spank::tstring& dirOut)
 {
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
     spank::tstring formatedDir = spank::FileUtil::formatFileDir(dirOut);
 
-    for (const auto& file : fileSet)
+    for (const auto& file : m_fileSet)
     {
         fipImage mainImage;
         if (!mainImage.load(file.c_str()))
         {
-            std::cout << "Error, opening image: " << file << std::endl;
+            LOGE("Opening image: {}", file);
             return false;
         }
 
@@ -730,7 +761,7 @@ bool ImageTool::splitBySize(const spank::StringList& files,
             }
         }
 
-        std::cout << file << ", done" << std::endl;
+        LOGI("{}, done", file);
     }
 
     return true;
@@ -741,14 +772,14 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
     fipImage image1;
     if (!image1.load(file1.c_str()))
     {
-        std::cout << "Error, opening image: " << file1 << std::endl;
+        LOGE("Opening image: {}", file1);
         return false;
     }
 
     fipImage image2;
     if (!image2.load(file2.c_str()))
     {
-        std::cout << "Error, opening image: " << file2 << std::endl;
+        LOGE("Opening image: {}", file2);
         return false;
     }
 
@@ -757,7 +788,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
 
     if (width != image2.getWidth() || height != image2.getHeight())
     {
-        std::cout << "Error, image size mismatch, both image width and height must be the same" << std::endl;
+        LOGE("Image size mismatch, both image width and height must be the same");
         return false;
     }
 
@@ -766,7 +797,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
     {
         if (!image1.convertTo24Bits())
         {
-            std::cout << "Error, convert image to 24 bits failed: " << file1 << std::endl;
+            LOGE("Convert image to 24 bits failed: {}", file1);
             return false;
         }
         bpp1 = 24;
@@ -777,7 +808,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
     {
         if (!image2.convertTo24Bits())
         {
-            std::cout << "Error, convert image to 24 bits failed: " << file2 << std::endl;
+            LOGE("Convert image to 24 bits failed: {}", file2);
             return false;
         }
         bpp2 = 24;
@@ -792,7 +823,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
         {
             if (!image1.convertTo8Bits())
             {
-                std::cout << "Error, convert image to 8 bits failed: " << file1 << std::endl;
+                LOGE("Convert image to 8 bits failed: {}", file1);
                 return false;
             }
         }
@@ -801,7 +832,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
         {
             if (!image1.convertTo16Bits565())
             {
-                std::cout << "Error, convert image to 16 bits failed: " << file1 << std::endl;
+                LOGE("Convert image to 16 bits failed: {}", file1);
                 return false;
             }
         }
@@ -810,7 +841,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
         {
             if (!image1.convertTo24Bits())
             {
-                std::cout << "Error, convert image to 24 bits failed: " << file1 << std::endl;
+                LOGE("Convert image to 24 bits failed: {}", file1);
                 return false;
             }
         }
@@ -819,14 +850,14 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
         {
             if (!image1.convertTo24Bits())
             {
-                std::cout << "Error, convert image to 24 bits failed: " << file1 << std::endl;
+                LOGE("Convert image to 24 bits failed: {}", file1);
                 return false;
             }
         }
         break;
         default:
         {
-            std::cout << "Error, image bits per pixel mismatch, both image bits per pixel must be the same " << std::endl;
+            LOGE("Image bits per pixel mismatch, both image bits per pixel must be the same");
             return false;
         }
         break;
@@ -841,7 +872,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
         {
             if (!image2.convertTo8Bits())
             {
-                std::cout << "Error, convert image to 8 bits failed: " << file2 << std::endl;
+                LOGE("Convert image to 8 bits failed: {}", file2);
                 return false;
             }
         }
@@ -850,7 +881,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
         {
             if (!image2.convertTo16Bits565())
             {
-                std::cout << "Error, convert image to 16 bits failed: " << file2 << std::endl;
+                LOGE("Convert image to 16 bits failed: {}", file2);
                 return false;
             }
         }
@@ -859,7 +890,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
         {
             if (!image2.convertTo24Bits())
             {
-                std::cout << "Error, convert image to 24 bits failed: " << file2 << std::endl;
+                LOGE("Convert image to 24 bits failed: {}", file2);
                 return false;
             }
         }
@@ -868,14 +899,14 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
         {
             if (!image2.convertTo24Bits())
             {
-                std::cout << "Error, convert image to 24 bits failed: " << file2 << std::endl;
+                LOGE("Convert image to 24 bits failed: {}", file2);
                 return false;
             }
         }
         break;
         default:
         {
-            std::cout << "Error, image bits per pixel mismatch, both image bits per pixel must be the same " << std::endl;
+            LOGE("Image bits per pixel mismatch, both image bits per pixel must be the same");
             return false;
         }
         break;
@@ -963,9 +994,7 @@ bool ImageTool::groupByFingerPrint(const spank::StringList& files,
                                    const spank::tstring& commandFormat,
                                    int distance)
 {
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
     double** iMatrix = new double*[IMAGE_SIZE];
     for (int i = 0; i < IMAGE_SIZE; ++i)
@@ -976,7 +1005,7 @@ bool ImageTool::groupByFingerPrint(const spank::StringList& files,
     FileInfoLinkList fileInfoList;
 
     // collect file pHash
-    for (const auto& file : fileSet)
+    for (const auto& file : m_fileSet)
     {
         FileInfo fileInfo;
         fileInfo.fileName = file;
@@ -1045,13 +1074,11 @@ bool ImageTool::groupByName(const spank::StringList& files,
                             const spank::tstring& commandFormat,
                             int distance)
 {
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, exts);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
 
     // collect file info
     FileInfoList fileInfoList;
-    for (const auto& file : fileSet)
+    for (const auto& file : m_fileSet)
     {
         FileInfo fileInfo;
         fileInfo.fileName = file;
@@ -1098,64 +1125,68 @@ bool ImageTool::groupByName(const spank::StringList& files,
     return true;
 }
 
+static void removeAlphaTask(const spank::tstring& file, int threshold)
+{
+    fipImage image;
+    if (!image.load(file.c_str()))
+    {
+        LOGE("Load image failed: {}", file);
+        return;
+    }
+
+    if (image.getBitsPerPixel() <= 24)
+    {
+        LOGE("Skip 24 bits image: {}", file);
+        return;
+    }
+
+    if (image.getBitsPerPixel() > 32)
+    {
+        LOGE("Force convert to 32 bits image: {}", file);
+        image.convertTo32Bits();
+    }
+
+    if (!ImageTool::isAlphaEqual(image, threshold))
+    {
+        LOGE("Keep alpha image: {}", file);
+        return;
+    }
+
+    if (!image.convertTo24Bits())
+    {
+        LOGE("Can not covert image to 24 bits: {}", file);
+        return;
+    }
+
+    if (!image.save(file.c_str()))
+    {
+        LOGE("Can not save image file: {}", file);
+        return;
+    }
+
+    LOGI("Alpha removed: {}", file);
+}
+
 bool ImageTool::removeAlpha(const spank::StringList& files, const spank::tstring& reg, int threshold)
 {
-    spank::StringSet fileSet;
-    collectFiles(fileSet, files, reg);
-    if (fileSet.empty()) return true;
+    if (collectFiles(m_fileSet, files, reg) <= 0) return true;
 
-    for (const auto& file : fileSet)
+    ThreadPool threadPool(m_numThreads);
+    for (const auto& file : m_fileSet)
     {
-        fipImage image;
-        if (!image.load(file.c_str()))
-        {
-            std::cout << "Error, load image failed: " << file << std::endl;
-            continue;
-        }
-
-        if (image.getBitsPerPixel() <= 24)
-        {
-            std::cout << "Skip 24 bits image: " << file << std::endl;
-            continue;
-        }
-
-        if (image.getBitsPerPixel() > 32)
-        {
-            std::cout << "Force convert to 32 bits image: " << file << std::endl;
-            image.convertTo32Bits();
-        }
-
-        if (!isAlphaEqual(image, threshold))
-        {
-            std::cout << "Keep alpha image: " << file << std::endl;
-            continue;
-        }
-
-        if (!image.convertTo24Bits())
-        {
-            std::cout << "Error, can not covert image to 24 bits: " << file << std::endl;
-            continue;
-        }
-
-        if (!image.save(file.c_str()))
-        {
-            std::cout << "Error, can not save image file: " << file << std::endl;
-            continue;
-        }
-        else
-        {
-            std::cout << "alpha removed: " << file << std::endl;
-        }
+        threadPool.enqueue(removeAlphaTask, file, threshold);
     }
 
     return true;
 }
 
-void ImageTool::collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::StringList& exts)
+std::size_t ImageTool::collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::StringList& exts)
 {
     spank::StringSet extSet;
     for (const auto& ext : exts)
+    {
         extSet.insert(ext);
+    }
 
     for (const auto& file : files)
     {
@@ -1168,9 +1199,11 @@ void ImageTool::collectFiles(spank::StringSet& fileSet, const spank::StringList&
             fileSet.insert(file);
         }
     }
+
+    return fileSet.size();
 }
 
-void ImageTool::collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::tstring& reg)
+std::size_t ImageTool::collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::tstring& reg)
 {
     std::regex rg(reg.c_str());
 
@@ -1188,6 +1221,8 @@ void ImageTool::collectFiles(spank::StringSet& fileSet, const spank::StringList&
             }
         }
     }
+
+    return fileSet.size();
 }
 
 const spank::tstring& ImageTool::getFilePath(TEXTURES eTexture)
@@ -1219,7 +1254,7 @@ void ImageTool::printGroupInfo(const FileInfoGroupList& fileInfoGroupList, const
         spank::StringUtil::replaceString(finalString, "{OUTPUT_FILE}", outputFile);
         spank::StringUtil::replaceString(finalString, "{FILE_NAME_LIST}", fileNameList);
 
-        std::cout << finalString << std::endl;
+        LOGI("{}", finalString);
     }
 }
 
@@ -1233,7 +1268,7 @@ bool ImageTool::convertToType(fipImage& image, const spank::tstring& destFilePat
         {
             if (!image.convertTo8Bits())
             {
-                std::cout << "Error, convert image to 8 bits failed: " << std::endl;
+                LOGE("Convert image to 8 bits failed");
                 return false;
             }
         }
@@ -1242,7 +1277,7 @@ bool ImageTool::convertToType(fipImage& image, const spank::tstring& destFilePat
         {
             if (!image.convertTo16Bits565())
             {
-                std::cout << "Error, convert image to 16 bits failed: " << std::endl;
+                LOGE("Convert image to 16 bits failed");
                 return false;
             }
         }
@@ -1251,7 +1286,7 @@ bool ImageTool::convertToType(fipImage& image, const spank::tstring& destFilePat
         {
             if (!image.convertTo24Bits())
             {
-                std::cout << "Error, convert image to 24 bits failed: " << std::endl;
+                LOGE("Convert image to 24 bits failed");
                 return false;
             }
         }
@@ -1260,14 +1295,14 @@ bool ImageTool::convertToType(fipImage& image, const spank::tstring& destFilePat
         {
             if (!image.convertTo24Bits())
             {
-                std::cout << "Error, convert image to 32 bits failed: " << std::endl;
+                LOGE("Convert image to 32 bits failed");
                 return false;
             }
         }
         break;
         default:
         {
-            std::cout << "Error, unsupported depth: " << depth << std::endl;
+            LOGE("Unsupported depth: {}", depth);
             return false;
         }
         break;
@@ -1277,25 +1312,25 @@ bool ImageTool::convertToType(fipImage& image, const spank::tstring& destFilePat
     fipMemoryIO memIO;
     if (!image.saveToMemory(dstFif, memIO))
     {
-        std::cout << "Error, save to memory failed: " << std::endl;
+        LOGE("Save to memory failed");
         return false;
     }
 
     if (!memIO.seek(0L, SEEK_SET))
     {
-        std::cout << "Error, seek memory failed: " << std::endl;
+        LOGE("Seek memory failed");
         return false;
     }
 
     if (!image.loadFromMemory(memIO))
     {
-        std::cout << "Error, load from memory failed: " << std::endl;
+        LOGE("Load from memory failed");
         return false;
     }
 
     if (!image.save(destFilePath.c_str()))
     {
-        std::cout << "Error, save image failed: " << destFilePath << std::endl;
+        LOGE("Save image failed: {}", destFilePath);
         return false;
     }
 

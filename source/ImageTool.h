@@ -72,16 +72,8 @@ public:
 
     typedef std::vector<FileInfoGroup> FileInfoGroupList;
 
-    class BlenderIconHead
-    {
-    public:
-        unsigned int icon_w, icon_h;
-        unsigned int orig_x, orig_y;
-        unsigned int canvas_w, canvas_h;
-    };
-
 public:
-    ImageTool();
+    ImageTool(int numThreads);
     ~ImageTool();
 
     bool resizeImageByPixel(const spank::StringList& files, const spank::StringList& exts, int pixelWidth, int pixelHeight);
@@ -132,13 +124,15 @@ public:
                      int distance);
     bool removeAlpha(const spank::StringList& files, const spank::tstring& reg, int threshold);
 
+    static bool convertToType(fipImage& image, const spank::tstring& destFilePath, FREE_IMAGE_FORMAT dstFif, int depth);
+    static bool isAlphaEqual(fipImage& image, int threshold);
+
 private:
-    void collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::StringList& exts);
-    void collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::tstring& reg);
+    std::size_t collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::StringList& exts);
+    std::size_t collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::tstring& reg);
     const spank::tstring& getFilePath(TEXTURES eTexture);
     void printGroupInfo(const FileInfoGroupList& fileInfoGroupList, const spank::tstring& outputType, const spank::tstring& commandFormat);
 
-    bool convertToType(fipImage& image, const spank::tstring& destFilePath, FREE_IMAGE_FORMAT dstFif, int depth);
     void DCT(const fipImage& image, const int& n, double** iMatrix);
     void coefficient(const int& n, double** quotient, double** quotientT);
     void matrixMultiply(double** A, double** B, int n, double** result);
@@ -150,7 +144,6 @@ private:
     bool getTrimedImageInfo(PackingUtil::PieceFileInfo& fileInfo, const fipImage& image);
     bool isEmptyRow(int y, int width, int height, BYTE* pixel);
     bool isEmptyCol(int x, int width, int height, BYTE* pixel);
-    bool isAlphaEqual(fipImage& image, int threshold);
 
     void saveAtlasInfoXml(const spank::tstring& id,
                           const spank::tstring& imageFile,
@@ -164,4 +157,9 @@ private:
                           float width,
                           float height,
                           const PackingUtil::PieceFileInfoMap& pieceFileInfoMap);
+
+private:
+    int m_numThreads{1};
+    spank::StringSet m_fileSet;
+
 };

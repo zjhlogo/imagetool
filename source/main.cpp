@@ -26,36 +26,28 @@ int main(int argc, char** argv)
     TCLAP::CmdLine cmd("image tools", ' ', "1.0.1");
 
     // add input file arg
-    TCLAP::MultiArg<spank::tstring> inputFileArg("i", "input", "input file can be a single file or directory, depend by specific switch", true, "path");
-    cmd.add(inputFileArg);
+    TCLAP::MultiArg<spank::tstring> inputFileArg("i", "input", "input file can be a single file or directory, depend by specific switch", true, "path", cmd);
 
     // additional input file arg
-    TCLAP::MultiArg<spank::tstring> input2FileArg("", "input2", "input file can be a single file or directory, depend by specific switch", false, "path");
-    cmd.add(input2FileArg);
+    TCLAP::MultiArg<spank::tstring> input2FileArg("", "input2", "input file can be a single file or directory, depend by specific switch", false, "path", cmd);
 
     // add output file arg
-    TCLAP::MultiArg<spank::tstring> outputFileArg("o", "output", "output file can be a single file or directory, depend by specific switch", false, "path");
-    cmd.add(outputFileArg);
+    TCLAP::MultiArg<spank::tstring> outputFileArg("o", "output", "output file can be a single file or directory, depend by specific switch", false, "path", cmd);
 
     // add ext arg
-    TCLAP::MultiArg<spank::tstring> extsArg("e", "ext", "extension of files", false, "string");
-    cmd.add(extsArg);
+    TCLAP::MultiArg<spank::tstring> extsArg("e", "ext", "extension of files", false, "string", cmd);
 
     // add percent
-    TCLAP::ValueArg<int> percentArg("", "percent", "resize image in percent", false, 50, "integer");
-    cmd.add(percentArg);
+    TCLAP::ValueArg<int> percentArg("", "percent", "resize image in percent", false, 50, "integer", cmd);
 
     // add width
-    TCLAP::ValueArg<int> widthArg("", "width", "image width in pixel", false, 128, "integer");
-    cmd.add(widthArg);
+    TCLAP::ValueArg<int> widthArg("", "width", "image width in pixel", false, 128, "integer", cmd);
 
     // add height
-    TCLAP::ValueArg<int> heightArg("", "height", "image height in pixel", false, 128, "integer");
-    cmd.add(heightArg);
+    TCLAP::ValueArg<int> heightArg("", "height", "image height in pixel", false, 128, "integer", cmd);
 
     // add convert type
-    TCLAP::ValueArg<spank::tstring> typeArg("t", "type", "convert file destination type", false, "png", "type");
-    cmd.add(typeArg);
+    TCLAP::ValueArg<spank::tstring> typeArg("t", "type", "convert file destination type", false, "png", "type", cmd);
 
     // add channel
     std::vector<std::string> allowedChannel;
@@ -64,12 +56,10 @@ int main(int argc, char** argv)
     allowedChannel.push_back("b");
     allowedChannel.push_back("a");
     TCLAP::ValuesConstraint<std::string> constChannelValues(allowedChannel);
-    TCLAP::ValueArg<spank::tstring> channelArg("c", "channel", "image file channel, must be one of the r|g|b|a", false, "a", &constChannelValues);
-    cmd.add(channelArg);
+    TCLAP::ValueArg<spank::tstring> channelArg("c", "channel", "image file channel, must be one of the r|g|b|a", false, "a", &constChannelValues, cmd);
 
     // add addition channel
-    TCLAP::ValueArg<spank::tstring> channel2Arg("", "channel2", "image file channel, must be one of the r|g|b|a", false, "a", &constChannelValues);
-    cmd.add(channel2Arg);
+    TCLAP::ValueArg<spank::tstring> channel2Arg("", "channel2", "image file channel, must be one of the r|g|b|a", false, "a", &constChannelValues, cmd);
 
     // add depth
     std::vector<int> allowedDepth;
@@ -79,44 +69,37 @@ int main(int argc, char** argv)
     allowedDepth.push_back(24);
     allowedDepth.push_back(32);
     TCLAP::ValuesConstraint<int> constDepthValues(allowedDepth);
-    TCLAP::ValueArg<int> depthArg("", "depth", "convert image into depth, must be one of the -1|8|16|24|32", false, -1, &constDepthValues);
-    cmd.add(depthArg);
+    TCLAP::ValueArg<int> depthArg("", "depth", "convert image into depth, must be one of the -1|8|16|24|32", false, -1, &constDepthValues, cmd);
 
     // add rotate switch
-    TCLAP::SwitchArg rotateSwitch("", "rotate", "rotate the images");
-    cmd.add(rotateSwitch);
+    TCLAP::SwitchArg rotateSwitch("", "rotate", "rotate the images", cmd);
 
     // add trim switch
-    TCLAP::SwitchArg trimSwitch("", "trim", "trim the image, remove all the border with white space");
-    cmd.add(trimSwitch);
+    TCLAP::SwitchArg trimSwitch("", "trim", "trim the image, remove all the border with white space", cmd);
 
     // add delete src file
-    TCLAP::SwitchArg deleteSrcSwitch("", "deletesrc", "delete source file");
-    cmd.add(deleteSrcSwitch);
+    TCLAP::SwitchArg deleteSrcSwitch("", "deletesrc", "delete source file", cmd);
 
     // add rows
-    TCLAP::ValueArg<int> rowsArg("", "row", "number of rows in the image", false, 1, "integer");
-    cmd.add(rowsArg);
+    TCLAP::ValueArg<int> rowsArg("", "row", "number of rows in the image", false, 1, "integer", cmd);
 
     // add cols
-    TCLAP::ValueArg<int> colsArg("", "col", "number of cols in the image", false, 1, "integer");
-    cmd.add(colsArg);
+    TCLAP::ValueArg<int> colsArg("", "col", "number of cols in the image", false, 1, "integer", cmd);
 
     // add format
-    TCLAP::ValueArg<spank::tstring> formatArg("f", "format", "format of the output", false, "", "string");
-    cmd.add(formatArg);
+    TCLAP::ValueArg<spank::tstring> formatArg("f", "format", "format of the output", false, "", "string", cmd);
 
     // add distance
-    TCLAP::ValueArg<int> distArg("d", "distance", "the hamming distance between compared image", false, 1, "integer distance");
-    cmd.add(distArg);
+    TCLAP::ValueArg<int> distArg("d", "distance", "the hamming distance between compared image", false, 1, "integer distance", cmd);
 
     // add threshold
-    TCLAP::ValueArg<int> thresholdArg("", "threshold", "the threshold", false, 1, "integer");
-    cmd.add(thresholdArg);
+    TCLAP::ValueArg<int> thresholdArg("", "threshold", "the threshold", false, 1, "integer", cmd);
 
     // add regex search
-    TCLAP::ValueArg<spank::tstring> regexArg("", "regex", "the regex to filter file list", false, "", "string");
-    cmd.add(regexArg);
+    TCLAP::ValueArg<spank::tstring> regexArg("", "regex", "the regex to filter file list", false, "", "string", cmd);
+
+    // add multi-thread param
+    TCLAP::ValueArg<int> multiThreadArg("j", "thread", "the multi-thread arguments", false, 4, "string", cmd);
 
     // add convention type
     // clang-format off
@@ -153,14 +136,14 @@ int main(int argc, char** argv)
     xorList.push_back(&groupByNameSwitch);
     xorList.push_back(&groupByFingerprintSwitch);
     xorList.push_back(&removeAlphaSwitch);
-
     cmd.xorAdd(xorList);
 
     cmd.parse(argc, argv);
 
     FreeImage_Initialise();
 
-    ImageTool tool;
+    ImageTool tool(multiThreadArg.getValue());
+
     if (resizeSwitch.isSet())
     {
         if (widthArg.isSet() && heightArg.isSet())

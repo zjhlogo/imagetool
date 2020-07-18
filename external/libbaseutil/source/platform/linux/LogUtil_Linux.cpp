@@ -26,8 +26,9 @@ void LogUtil::print(const char* location, int line, LogPriority prio, const tstr
 
 	s_mutex.lock();
 
-	std::ostringstream oss;
-	oss << location << "(" << line << "): " << PRIORITY_MAP[static_cast<int>(prio)] << ": " << strMsg << std::endl;
+//	std::ostringstream oss;
+//	oss << location << "(" << line << "): " << PRIORITY_MAP[static_cast<int>(prio)] << ": " << strMsg << std::endl;
+    std::cout << PRIORITY_MAP[static_cast<int>(prio)] << ": " << strMsg << std::endl;
 
 	s_mutex.unlock();
 }
