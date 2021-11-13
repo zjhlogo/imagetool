@@ -89,6 +89,8 @@ add_library(static_baseutil ${ALL_FILES})
 
 if (CMAKE_SYSTEM_NAME MATCHES "Android")
     target_link_libraries(static_baseutil log)
+elseif (CMAKE_SYSTEM_NAME MATCHES "Linux")
+    target_link_libraries(static_baseutil pthread)
 endif ()
 
 foreach(FILE ${ALL_FILES}) 
