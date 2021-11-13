@@ -66,7 +66,11 @@ size_t FileUtil::listFilesInDirectory(StringSet& filesOut,
                                       const StringSet& excludeExts /* = TS_STRING() */)
 {
     enumlateFiles(filesOut, dir);
+    LOGI("enumlate files: {}, count = {}", dir, filesOut.size());
+
     filterFilesByExtension(filesOut, includeExts, excludeExts);
+    LOGI("filter files by extension: count = {}", dir, filesOut.size());
+
     return filesOut.size();
 }
 
