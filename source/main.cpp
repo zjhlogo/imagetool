@@ -115,8 +115,8 @@ int main(int argc, char** argv)
     TCLAP::SwitchArg detectRedSwitch("", "detectred", "detect red pixel position in images, example: --detectred -i dir -e png -o out.xml");
     TCLAP::SwitchArg splitSwitch("", "split", "split texture to sub textures, example: --split -i dir -e png -t png --row 10 --col 10 -o dir or --split -i dir -e png -t png --width 800 --height 600 -o dir");
     TCLAP::SwitchArg subtractSwitch("", "subtract", "subtract one image color from another image by pixel and generate difference image, example(image1-image2=out): --subtract -i image1.png --input2 image2.png -o out.png");
-    TCLAP::SwitchArg groupByNameSwitch("", "groupbyname", "group images by filename, example: --groupbyname -i dir -e png -f \"img2webp -mixed -d 1000 -q 90 -m 6 -mt -v -o {FILE_DIR}{FILE_COMMON_NAME}.webp -f {FILE_NAME_LIST}\" -d 1");
-    TCLAP::SwitchArg groupByFingerprintSwitch("", "groupbyfp", "group images by finerprint, example: --groupbyfp -i dir -e png -f \"img2webp -mixed -d 1000 -q 90 -m 6 -mt -v -o {FILE_DIR}{FILE_COMMON_NAME}.webp -f {FILE_NAME_LIST}\" -d 1");
+    TCLAP::SwitchArg groupByNameSwitch("", "groupbyname", "group images by filename, example: --groupbyname -i dir -e png -t webp -f \"img2webp -mixed -d 1000 -q 90 -m 6 -mt -v -o {OUTPUT_FILE}.webp -f {FILE_NAME_LIST}\" -d 1");
+    TCLAP::SwitchArg groupByFingerprintSwitch("", "groupbyfp", "group images by finerprint, example: --groupbyfp -i dir -e png -t webp -f \"img2webp -mixed -d 1000 -q 90 -m 6 -mt -v -o {OUTPUT_FILE}.webp -f {FILE_NAME_LIST}\" -d 1");
     TCLAP::SwitchArg removeAlphaSwitch("", "removealpha", "remove alpha channel, example: --removealpha -i dir -e png --threshold 32");
     // clang-format on
 

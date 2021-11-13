@@ -1186,19 +1186,16 @@ std::size_t ImageTool::collectFiles(spank::StringSet& fileSet, const spank::Stri
     for (const auto& ext : exts)
     {
         extSet.insert(ext);
-        LOGI("loading ext: {}", ext);
     }
 
     for (const auto& file : files)
     {
         if (spank::FileUtil::isDirectory(file))
         {
-            LOGI("list file in dir: {}", file);
             spank::FileUtil::listFilesInDirectory(fileSet, file, extSet);
         }
         else
         {
-            LOGI("insert file: {}", file);
             fileSet.insert(file);
         }
     }

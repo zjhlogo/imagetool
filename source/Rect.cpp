@@ -1,5 +1,5 @@
 /** @file Rect.cpp
-        @author Jukka Jylänki
+        @author Jukka Jylnki
 
         This work is released to Public Domain, do whatever you want with it.
 */
