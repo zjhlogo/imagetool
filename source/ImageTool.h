@@ -115,12 +115,12 @@ public:
     bool groupByFingerPrint(const spank::StringList& files,
                             const spank::StringList& exts,
                             const spank::tstring& outputType,
-                            const spank::tstring& commandFormat,
+                            const spank::tstring& execArg,
                             int distance);
     bool groupByName(const spank::StringList& files,
                      const spank::StringList& exts,
                      const spank::tstring& outputType,
-                     const spank::tstring& commandFormat,
+                     const spank::tstring& execArg,
                      int distance);
     bool removeAlpha(const spank::StringList& files, const spank::tstring& reg, int threshold);
 
@@ -131,7 +131,7 @@ private:
     std::size_t collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::StringList& exts);
     std::size_t collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::tstring& reg);
     const spank::tstring& getFilePath(TEXTURES eTexture);
-    void printGroupInfo(const FileInfoGroupList& fileInfoGroupList, const spank::tstring& outputType, const spank::tstring& commandFormat);
+    void executeCommand(const FileInfoGroupList& fileInfoGroupList, const spank::tstring& outputType, const spank::tstring& commandFormat);
 
     void DCT(const fipImage& image, const int& n, double** iMatrix);
     void coefficient(const int& n, double** quotient, double** quotientT);

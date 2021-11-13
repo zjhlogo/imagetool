@@ -87,7 +87,7 @@ int main(int argc, char** argv)
     TCLAP::ValueArg<int> colsArg("", "col", "number of cols in the image", false, 1, "integer", cmd);
 
     // add format
-    TCLAP::ValueArg<spank::tstring> formatArg("f", "format", "format of the output", false, "", "string", cmd);
+    TCLAP::ValueArg<spank::tstring> execArg("", "exec", "execute the system command", false, "", "string", cmd);
 
     // add distance
     TCLAP::ValueArg<int> distArg("d", "distance", "the hamming distance between compared image", false, 1, "integer distance", cmd);
@@ -115,8 +115,8 @@ int main(int argc, char** argv)
     TCLAP::SwitchArg detectRedSwitch("", "detectred", "detect red pixel position in images, example: --detectred -i dir -e png -o out.xml");
     TCLAP::SwitchArg splitSwitch("", "split", "split texture to sub textures, example: --split -i dir -e png -t png --row 10 --col 10 -o dir or --split -i dir -e png -t png --width 800 --height 600 -o dir");
     TCLAP::SwitchArg subtractSwitch("", "subtract", "subtract one image color from another image by pixel and generate difference image, example(image1-image2=out): --subtract -i image1.png --input2 image2.png -o out.png");
-    TCLAP::SwitchArg groupByNameSwitch("", "groupbyname", "group images by filename, example: --groupbyname -i dir -e png -t webp -f \"img2webp -mixed -d 1000 -q 90 -m 6 -mt -v -o {OUTPUT_FILE}.webp -f {FILE_NAME_LIST}\" -d 1");
-    TCLAP::SwitchArg groupByFingerprintSwitch("", "groupbyfp", "group images by finerprint, example: --groupbyfp -i dir -e png -t webp -f \"img2webp -mixed -d 1000 -q 90 -m 6 -mt -v -o {OUTPUT_FILE}.webp -f {FILE_NAME_LIST}\" -d 1");
+    TCLAP::SwitchArg groupByNameSwitch("", "groupbyname", "group images by filename, example: --groupbyname -i dir -e png -t webp -d 1 --exec \"img2webp -mixed -d 1000 -q 90 -v -o {OUTPUT_FILE}.webp {FILE_NAME_LIST}\"");
+    TCLAP::SwitchArg groupByFingerprintSwitch("", "groupbyfp", "group images by finerprint, example: --groupbyfp -i dir -e jpg -e png -t webp -d 1 --exec \"img2webp -mixed -d 1000 -q 90 -v -o {OUTPUT_FILE}.webp {FILE_NAME_LIST}\"");
     TCLAP::SwitchArg removeAlphaSwitch("", "removealpha", "remove alpha channel, example: --removealpha -i dir -e png --threshold 32");
     // clang-format on
 
@@ -229,13 +229,13 @@ int main(int argc, char** argv)
     {
         tool.subtract(inputFileArg.getValue()[0], input2FileArg.getValue()[0], outputFileArg.getValue()[0]);
     }
-    else if (groupByNameSwitch.isSet() && inputFileArg.isSet() && extsArg.isSet() && typeArg.isSet() && formatArg.isSet())
+    else if (groupByNameSwitch.isSet() && inputFileArg.isSet() && extsArg.isSet() && typeArg.isSet())
     {
-        tool.groupByName(inputFileArg.getValue(), extsArg.getValue(), typeArg.getValue(), formatArg.getValue(), distArg.getValue());
+        tool.groupByName(inputFileArg.getValue(), extsArg.getValue(), typeArg.getValue(), execArg.getValue(), distArg.getValue());
     }
-    else if (groupByFingerprintSwitch.isSet() && inputFileArg.isSet() && extsArg.isSet() && typeArg.isSet() && formatArg.isSet())
+    else if (groupByFingerprintSwitch.isSet() && inputFileArg.isSet() && extsArg.isSet() && typeArg.isSet())
     {
-        tool.groupByFingerPrint(inputFileArg.getValue(), extsArg.getValue(), typeArg.getValue(), formatArg.getValue(), distArg.getValue());
+        tool.groupByFingerPrint(inputFileArg.getValue(), extsArg.getValue(), typeArg.getValue(), execArg.getValue(), distArg.getValue());
     }
     else if (removeAlphaSwitch.isSet() && inputFileArg.isSet() && regexArg.isSet())
     {

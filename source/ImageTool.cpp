@@ -991,7 +991,7 @@ bool ImageTool::subtract(const spank::tstring& file1, const spank::tstring& file
 bool ImageTool::groupByFingerPrint(const spank::StringList& files,
                                    const spank::StringList& exts,
                                    const spank::tstring& outputType,
-                                   const spank::tstring& commandFormat,
+                                   const spank::tstring& execArg,
                                    int distance)
 {
     if (collectFiles(m_fileSet, files, exts) <= 0) return true;
@@ -1063,7 +1063,10 @@ bool ImageTool::groupByFingerPrint(const spank::StringList& files,
     }
 
     // print out group info
-    printGroupInfo(fileInfoGroupList, outputType, commandFormat);
+    if (!execArg.empty())
+    {
+        executeCommand(fileInfoGroupList, outputType, execArg);
+    }
 
     return true;
 }
@@ -1071,7 +1074,7 @@ bool ImageTool::groupByFingerPrint(const spank::StringList& files,
 bool ImageTool::groupByName(const spank::StringList& files,
                             const spank::StringList& exts,
                             const spank::tstring& outputType,
-                            const spank::tstring& commandFormat,
+                            const spank::tstring& execArg,
                             int distance)
 {
     if (collectFiles(m_fileSet, files, exts) <= 0) return true;
@@ -1120,7 +1123,10 @@ bool ImageTool::groupByName(const spank::StringList& files,
     }
 
     // print out group info
-    printGroupInfo(fileInfoGroupList, outputType, commandFormat);
+    if (!execArg.empty())
+    {
+        executeCommand(fileInfoGroupList, outputType, execArg);
+    }
 
     return true;
 }
@@ -1236,7 +1242,7 @@ const spank::tstring& ImageTool::getFilePath(TEXTURES eTexture)
     return s_texFilePath[eTexture];
 }
 
-void ImageTool::printGroupInfo(const FileInfoGroupList& fileInfoGroupList, const spank::tstring& outputType, const spank::tstring& commandFormat)
+void ImageTool::executeCommand(const FileInfoGroupList& fileInfoGroupList, const spank::tstring& outputType, const spank::tstring& commandFormat)
 {
     for (const auto& groupInfo : fileInfoGroupList)
     {
@@ -1254,7 +1260,7 @@ void ImageTool::printGroupInfo(const FileInfoGroupList& fileInfoGroupList, const
         spank::StringUtil::replaceString(finalString, "{OUTPUT_FILE}", outputFile);
         spank::StringUtil::replaceString(finalString, "{FILE_NAME_LIST}", fileNameList);
 
-        LOGI("{}", finalString);
+        system(finalString.c_str());
     }
 }
 
