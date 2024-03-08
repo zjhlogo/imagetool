@@ -1,1 +1,2 @@
-# imagetool
+# Image Tool
+a command line batch image process tool. type conversion, image split/join, channel split/join/replace, etc ...
