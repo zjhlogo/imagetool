@@ -65,10 +65,10 @@ void LogUtil::print(const char* location, int line, LogPriority prio, const tstr
     static std::mutex s_mutex;
 
     static const char* PRIORITY_MAP[static_cast<int>(LogPriority::NumPriority)] = {
-        "Info",
-        "Debug",
-        "Warning",
-        "Error",
+        "Info: ",
+        "Debug: ",
+        "Warning: ",
+        "Error: ",
     };
 
     s_mutex.lock();
@@ -77,7 +77,7 @@ void LogUtil::print(const char* location, int line, LogPriority prio, const tstr
 //     oss << location << "(" << line << "): " << PRIORITY_MAP[static_cast<int>(prio)] << ": " << strMsg << std::endl;
 //     g_logFile.logString(oss.str());
 
-    std::cout << PRIORITY_MAP[static_cast<int>(prio)] << ": " << strMsg << std::endl;
+    std::cout << PRIORITY_MAP[static_cast<int>(prio)] << strMsg << std::endl;
 
 // #if defined(_DEBUG)
 //     OutputDebugString(oss.str().c_str());

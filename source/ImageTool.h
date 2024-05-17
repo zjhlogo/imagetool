@@ -123,9 +123,11 @@ public:
                      const spank::tstring& execArg,
                      int distance);
     bool removeAlpha(const spank::StringList& files, const spank::tstring& reg, int threshold);
+    bool hasAlpha(const spank::StringList& files, const spank::StringList& exts);
 
     static bool convertToType(fipImage& image, const spank::tstring& destFilePath, FREE_IMAGE_FORMAT dstFif, int depth);
-    static bool isAlphaEqual(fipImage& image, int threshold);
+    static bool isAlphaInRange(fipImage& image, int threshold);
+    static bool isAlphaEqual(fipImage& image, int value);
 
 private:
     std::size_t collectFiles(spank::StringSet& fileSet, const spank::StringList& files, const spank::StringList& exts);

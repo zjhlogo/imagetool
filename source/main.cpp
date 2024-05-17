@@ -118,6 +118,7 @@ int main(int argc, char** argv)
     TCLAP::SwitchArg groupByNameSwitch("", "groupbyname", "group images by filename, example: --groupbyname -i dir -e png -t webp -d 1 --exec \"img2webp -mixed -d 1000 -q 90 -v -o {OUTPUT_FILE}.webp {FILE_NAME_LIST}\"");
     TCLAP::SwitchArg groupByFingerprintSwitch("", "groupbyfp", "group images by finerprint, example: --groupbyfp -i dir -e jpg -e png -t webp -d 1 --exec \"img2webp -mixed -d 1000 -q 90 -v -o {OUTPUT_FILE}.webp {FILE_NAME_LIST}\"");
     TCLAP::SwitchArg removeAlphaSwitch("", "removealpha", "remove alpha channel, example: --removealpha -i dir -e png --threshold 32");
+    TCLAP::SwitchArg hasAlphaSwitch("", "hasalpha", "check image has alpha (has alpha channel and any alpha pixel value not equal 255), example: --hasalpha -i dir -e png -e tag");
     // clang-format on
 
     std::vector<TCLAP::Arg*> xorList;
@@ -136,6 +137,7 @@ int main(int argc, char** argv)
     xorList.push_back(&groupByNameSwitch);
     xorList.push_back(&groupByFingerprintSwitch);
     xorList.push_back(&removeAlphaSwitch);
+    xorList.push_back(&hasAlphaSwitch);
     cmd.xorAdd(xorList);
 
     cmd.parse(argc, argv);
@@ -242,6 +244,10 @@ int main(int argc, char** argv)
         int threshold = 0;
         if (thresholdArg.isSet()) threshold = thresholdArg.getValue();
         tool.removeAlpha(inputFileArg.getValue(), regexArg.getValue(), threshold);
+    }
+    else if (hasAlphaSwitch.isSet() && inputFileArg.isSet() && extsArg.isSet())
+    {
+        tool.hasAlpha(inputFileArg.getValue(), extsArg.getValue());
     }
 
     FreeImage_DeInitialise();

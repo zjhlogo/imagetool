@@ -1152,7 +1152,7 @@ static void removeAlphaTask(const spank::tstring& file, int threshold)
         image.convertTo32Bits();
     }
 
-    if (!ImageTool::isAlphaEqual(image, threshold))
+    if (!ImageTool::isAlphaInRange(image, threshold))
     {
         LOGE("Keep alpha image: {}", file);
         return;
@@ -1181,6 +1181,71 @@ bool ImageTool::removeAlpha(const spank::StringList& files, const spank::tstring
     for (const auto& file : m_fileSet)
     {
         threadPool.enqueue(removeAlphaTask, file, threshold);
+    }
+
+    return true;
+}
+
+bool ImageTool::isAlphaEqual(fipImage& image, int value)
+{
+    int width = image.getWidth();
+    int height = image.getHeight();
+
+    for (int y = 0; y < height; ++y)
+    {
+        int* pPixelData = (int*)image.getScanLine(y);
+        for (int x = 0; x < width; ++x)
+        {
+            int alpha = pPixelData[x];
+            alpha = (alpha >> 24) & 0x000000FF;
+            if (alpha != value)
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+static void hasAlphaTask(const spank::tstring& file)
+{
+    fipImage image;
+    if (!image.load(file.c_str()))
+    {
+        return;
+    }
+
+    auto width = image.getWidth();
+    auto height = image.getHeight();
+    auto totalPixel = width * height;
+    
+    if (image.getBitsPerPixel() <= 24)
+    {
+        return;
+    }
+
+    auto bpp = image.getBitsPerPixel();
+    if (bpp > 32)
+    {
+        image.convertTo32Bits();
+    }
+
+    if (ImageTool::isAlphaEqual(image, 255))
+    {
+        LOGI("{},{},{},{},{}", file, width, height, totalPixel, bpp);
+    }
+}
+
+bool ImageTool::hasAlpha(const spank::StringList& files, const spank::StringList& exts)
+{
+    if (collectFiles(m_fileSet, files, exts) <= 0) return true;
+
+    LOGI("file,width,height,total_size,bpp");
+    ThreadPool threadPool(m_numThreads);
+    for (const auto& file : m_fileSet)
+    {
+        threadPool.enqueue(hasAlphaTask, file);
     }
 
     return true;
@@ -1540,7 +1605,7 @@ bool ImageTool::isEmptyCol(int x, int width, int height, BYTE* pixel)
     return true;
 }
 
-bool ImageTool::isAlphaEqual(fipImage& image, int threshold)
+bool ImageTool::isAlphaInRange(fipImage& image, int threshold)
 {
     int width = image.getWidth();
     int height = image.getHeight();

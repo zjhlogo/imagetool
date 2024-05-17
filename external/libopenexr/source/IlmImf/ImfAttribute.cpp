@@ -40,6 +40,7 @@
 //
 //-----------------------------------------------------------------------------
 
+#include <functional>
 #include <ImfAttribute.h>
 #include "IlmThreadMutex.h"
 #include "Iex.h"
@@ -63,7 +64,7 @@ Attribute::~Attribute () {}
 
 namespace {
 
-struct NameCompare: std::binary_function <const char *, const char *, bool>
+struct NameCompare: std::binary_function<const char *, const char *, bool>
 {
     bool
     operator () (const char *x, const char *y) const
